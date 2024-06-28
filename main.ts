@@ -1,13 +1,25 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace } from 'obsidian';
+import { App, Editor, MarkdownView, MarkdownFileInfo, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace, Vault, TAbstractFile, TFile } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
 interface WritingProgressPluginSettings {
-	mySetting: string;
+	dailyGoal: number;
+	todayStartWordCount: number;
+	currentGlobalWordCount: number;
+	dailyStats: any;
+	goalProperty: string;
+	wordCountProperty: string;
+	filterCountedFilesProperty: string;
 }
 
 const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
-	mySetting: 'default'
+	dailyGoal: 100,
+	todayStartWordCount: 0,
+	currentGlobalWordCount: 0,
+	dailyStats: [],
+	goalProperty: "Цель",
+	wordCountProperty: "Слов",
+	filterCountedFilesProperty: "Цель"
 }
 
 
@@ -16,26 +28,25 @@ const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
 
 
 
-/* VIEW */
+/* PROGRESS VIEW */
 
-export const WRITING_PROGRESS_VIEW_TYPE = "example-view";
+export const WRITING_PROGRESS_VIEW_TYPE = "writing-progress-view";
 
 export class WritingProgressView extends ItemView {
-  constructor(leaf: WorkspaceLeaf) {
+  plugin: WritingProgressPlugin;
+
+
+  constructor(leaf: WorkspaceLeaf, plugin: WritingProgressPlugin) {
     super(leaf);
+	this.plugin = plugin;
   }
 
   getViewType() {
     return WRITING_PROGRESS_VIEW_TYPE;
   }
 
-  getDisplayText() {
-    return "Example view";
-  }
-
-
-  wordCountPluginActive() {
-	return this.app.internalPlugins.plugins["word-count"].enabled
+  getDisplayText(): string {
+	return ""
   }
 
   getActiveFile() {
@@ -43,40 +54,141 @@ export class WritingProgressView extends ItemView {
   }
 
 
-  getWordCount() {
-	return this.app.internalPlugins.plugins["word-count"].instance.wordCount
+
+  async onOpen() {
+	const container = this.containerEl.children[1];
+    
+	let file: TFile | null = this.app.workspace.getActiveFile()
+	this.updateView(file, container)
+
+
+	this.registerEvent(
+		this.app.workspace.on("editor-change", async () => {
+			let file: TFile | null = this.app.workspace.getActiveFile()
+			await this.updateView(file, container)
+		})
+	);
+
+
+	this.registerEvent(
+		this.app.workspace.on("file-open", async (file: TFile) => {
+			if (file == this.app.workspace.getActiveFile()) {
+				await this.updateView(file, container)
+			}
+		})
+	);
+
+	this.registerEvent(
+		this.app.workspace.on("layout-change", async () => {
+			let file: TFile | null = this.app.workspace.getActiveFile()
+			await this.updateView(file, container)
+		})
+	);
+
+
+
   }
 
+	async onClose() {
+	// Nothing to clean up.
+	}
+
+
+	async updateView (file: TFile | null, container: Element) {
+		container.empty()
+		if (file) {
+			await this.renderWordCount(file, container)
+			this.renderDailyStats(container)
+		} else {
+			container.createEl("h4", { text: "No file open" });
+		}
+	}
+
+
+
+
+	async renderWordCount(file: TFile, container: Element) {
+
+		let wordCount = await this.plugin.getFileWordCount(file)
+		let goal = this.plugin.getFileGoal(file)
+
+		container.createEl("h4", { text: "Прогресс сцены" });
+		container.createEl("p", { text: wordCount + "/" + goal });
+		let fileProgress = container.createEl("progress");
+		fileProgress.max = goal
+		fileProgress.value = wordCount
+	}
+
+
+
+
+	renderDailyStats(container: Element) {
+		let dailyGoal = this.plugin.settings.dailyGoal
+		let todayStartWordCount = this.plugin.settings.todayStartWordCount
+		let currentGlobalWordCount = this.plugin.settings.currentGlobalWordCount
+		let writtenToday = currentGlobalWordCount - todayStartWordCount
+
+		container.createEl("h4", { text: "Ежедневный прогресс" });
+		container.createEl("p", { text: writtenToday + "/" + dailyGoal });
+		let dailyProgress = container.createEl("progress");
+		dailyProgress.max = dailyGoal
+		dailyProgress.value = writtenToday
+	}
+
+
+}
+
+
+
+
+
+
+
+
+
+
+/* STATISTIC VIEW */
+
+
+export const WRITING_STATISTIC_VIEW_TYPE = "writing-statistic-view";
+
+export class WritingStatisticView extends ItemView {
+  plugin: WritingProgressPlugin;
+
+
+  constructor(leaf: WorkspaceLeaf, plugin: WritingProgressPlugin) {
+    super(leaf);
+	this.plugin = plugin;
+  }
+
+  getViewType() {
+    return WRITING_STATISTIC_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+	return ""
+  }
+
+  getActiveFile() {
+	return this.app.workspace.getActiveFile()
+  }
 
 
 
   async onOpen() {
 	const container = this.containerEl.children[1];
-    container.empty();
+	container.empty()
 
-
-	if (!this.getActiveFile()) {
-		container.createEl("h4", { text: "No file open" });
-
-
-	} else if (!this.wordCountPluginActive()) {
-		container.createEl("h4", { text: "Word count plugin disabled" });
-
-
-	} else {
-		container.createEl("h4", { text: "Example view" });
-
-	}
+	container.createEl("h4", { text: "Статистика" });
     
+
   }
 
-  async onClose() {
-    // Nothing to clean up.
-  }
+	async onClose() {
+	// Nothing to clean up.
+	}
+
 }
-
-
-
 
 
 
@@ -90,117 +202,201 @@ export class WritingProgressView extends ItemView {
 
 export default class WritingProgressPlugin extends Plugin {
 	settings: WritingProgressPluginSettings;
+	timer: any;
+	
 
 	async onload() {
 		await this.loadSettings();
-		
-		
-
-		// This creates an icon in the left ribbon.
-		/*
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		*/
-		// Perform additional things with the ribbon
-		//ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		/*
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-		*/
-
-		// This adds a simple command that can be triggered anywhere
-		/*
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		*/
-		// This adds an editor command that can perform some operation on the current editor instance
-		/*
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		*/
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		/*
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-		*/
-		// This adds a settings tab so the user can configure various aspects of the plugin
+		await this.updateDailyStats()
 		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		/*
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-		*/
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		/*
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-		*/
-
-
-
 
 		this.registerView(
 			WRITING_PROGRESS_VIEW_TYPE,
-			(leaf) => new WritingProgressView(leaf)
+			(leaf) => new WritingProgressView(leaf, this)
+		);
+
+		this.registerView(
+			WRITING_STATISTIC_VIEW_TYPE,
+			(leaf) => new WritingStatisticView(leaf, this)
 		);
 
 		this.activateProgressView(false);
 
-		
-	  /*
-		this.addRibbonIcon("dice", "Activate view", () => {
-			this.activateProgressView();
+		this.addCommand({
+			id: 'open-writing-progress-view',
+			name: 'Открыть панель прогресса',
+			callback: () => {
+				this.activateProgressView(true);
+			}
 		});
-	*/	
 
-	this.addCommand({
-		id: 'open-writing-progress-view',
-		name: 'Открыть панель прогресса',
-		callback: () => {
-			this.activateProgressView(true);
-		}
-	});
-		
+		this.addCommand({
+			id: 'open-writing-statistic-view',
+			name: 'Открыть панель статистики',
+			callback: () => {
+				this.activateStatisticView(true);
+			}
+		});
 
-		
+		// Update global word count
+
+		this.registerEvent(
+			this.app.workspace.on("editor-change", async () => {
+				this.updateGlobalWordCount()
+			})
+		);
+
+		this.registerEvent(
+			this.app.workspace.on("layout-change", async () => {
+				this.updateGlobalWordCount()
+			})
+		);
+
+		// Save file wordcount property (wait 2 seconds after stopping typing to avoid data loss and annoying notices)
+
+		this.registerEvent(
+			this.app.workspace.on("editor-change", async () => {
+				clearTimeout(this.timer);
+				this.timer = setTimeout(async() => {
+					let file: TFile | null = this.app.workspace.getActiveFile()
+					if (file) {
+						let wordCount = await this.getFileWordCount(file)
+						let wordCountProperty = this.settings.wordCountProperty
+						this.app.fileManager.processFrontMatter(file, (fm) => {
+							if (fm[wordCountProperty] != wordCount) {
+								fm[wordCountProperty] = wordCount
+							}
+						})
+					}
+				}, 2000)
+			})
+		);
+
+	
 	}
 
 	onunload() {
 
+	}
+
+
+
+	async updateDailyStats() {
+
+		let today = window.moment().format("YYYY-MM-DD")
+		let dailyStats = this.settings.dailyStats
+
+
+
+
+		let todayStat = dailyStats.find((stat:any) => stat.date == today)
+		if (!todayStat) {
+
+			if (dailyStats.length > 0) {
+				let lastStat = dailyStats[dailyStats.length - 1]
+				lastStat.endWordCount = this.settings.currentGlobalWordCount
+			}
+
+
+			todayStat = {
+				date: today,
+				startWordCount: this.settings.currentGlobalWordCount
+			}
+
+			dailyStats.push(todayStat)
+			this.settings.dailyStats = dailyStats
+			this.settings.todayStartWordCount = this.settings.currentGlobalWordCount
+		}
+
+		
+
+		await this.saveSettings()
+	}
+
+
+
+
+	async updateGlobalWordCount() {
+		let globalWordCount = 0
+		let allFiles = this.app.vault.getMarkdownFiles()
+		let goalProperty = this.settings.goalProperty
+
+		for (let file of allFiles) {
+			if (this.hasTrueProperty(file, goalProperty)) {
+				let fileWordCount = await this.getFileWordCount(file)
+				globalWordCount += fileWordCount
+			}
+		}
+
+		if (globalWordCount != this.settings.currentGlobalWordCount) {
+			this.settings.currentGlobalWordCount = globalWordCount
+			await this.saveSettings();
+
+		}
+	}
+
+
+
+
+	hasTrueProperty(file: TFile, propName: string) : boolean {
+		let cache = this.app.metadataCache.getFileCache(file)
+		return cache?.frontmatter?.[propName]		
+	}
+
+
+
+
+	getFileGoal(file: TFile) : number {
+		let goalProperty = this.settings.goalProperty
+		return this.app.metadataCache.getFileCache(file)?.frontmatter?.[goalProperty] ?? 0
+	}
+
+
+
+
+	async getFileWordCount(file: TFile) {
+
+		let content: string = ""
+		if (file == this.app.workspace.getActiveFile()) {
+			let activeEditor = this.app.workspace.activeEditor
+			if (activeEditor && activeEditor instanceof MarkdownView) {
+				content = activeEditor.getViewData()
+			}
+		} else {
+			content = await this.app.vault.cachedRead(file)
+		}
+
+		content = content
+		.replace(/^---\n.*?\n---/ms, "")
+		.replace(/%%.*?%%/gms, "")
+		.replaceAll("—", "")
+		.replaceAll(/[\n]+/mg, " ")
+		.replaceAll(/[ ]+/mg, " ")
+		.replaceAll("==", "")
+		.replaceAll("*", "")
+		.replaceAll("#", "")
+		.replaceAll(/\[\[.*?\]\]/gms, "")
+		.trim()
+
+		let words = content.split(" ")
+		if (words.length == 1 && words[0] == "") {
+				words = []
+		}
+		return words.length
+	}
+
+
+
+
+
+	getProgressView() {
+		let view: any
+		this.app.workspace.getLeavesOfType(WRITING_PROGRESS_VIEW_TYPE).forEach((leaf) => {
+			if (leaf.view instanceof WritingProgressView) {
+			  view = leaf.view
+			}
+		});
+		return view
 	}
 
 
@@ -211,22 +407,17 @@ export default class WritingProgressPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(async () => {
 
 			const { workspace } = this.app;
-
 			let leaf: WorkspaceLeaf | null = null;
 			const leaves = workspace.getLeavesOfType(WRITING_PROGRESS_VIEW_TYPE);
 
 			if (leaves.length > 0) {
-				// A leaf with our view already exists, use that
 				leaf = leaves[0];
 			} else {
-				// Our view could not be found in the workspace, create a new leaf
-				// in the right sidebar for it
-				leaf = workspace.getRightLeaf(false);
+				leaf = workspace.getRightLeaf(false)!;
 				await leaf.setViewState({ type: WRITING_PROGRESS_VIEW_TYPE, active: reveal });
 			}
 
 			if (reveal) {
-				// "Reveal" the leaf in case it is in a collapsed sidebar
 				workspace.revealLeaf(leaf);
 			}
 		});
@@ -235,7 +426,30 @@ export default class WritingProgressPlugin extends Plugin {
 
 
 
-	  
+	async activateStatisticView(reveal:boolean) {
+		this.app.workspace.onLayoutReady(async () => {
+
+			const { workspace } = this.app;
+			let leaf: WorkspaceLeaf | null = null;
+			const leaves = workspace.getLeavesOfType(WRITING_STATISTIC_VIEW_TYPE);
+
+			if (leaves.length > 0) {
+				leaf = leaves[0];
+			} else {
+				leaf = workspace.getLeaf(true)!;
+				await leaf.setViewState({ type: WRITING_STATISTIC_VIEW_TYPE, active: reveal });
+			}
+
+			if (reveal) {
+				workspace.revealLeaf(leaf);
+			}
+		});
+	}
+
+
+
+
+
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -246,21 +460,7 @@ export default class WritingProgressPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
 
 class SampleSettingTab extends PluginSettingTab {
 	plugin: WritingProgressPlugin;
@@ -272,18 +472,6 @@ class SampleSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const {containerEl} = this;
-
 		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
 	}
 }
