@@ -6,3 +6,12 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+
+
+
+
+.weekly-bar-chart, .weekly-line-chart {
+    max-height: 350px;
+}
+
