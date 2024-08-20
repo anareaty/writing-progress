@@ -747,7 +747,7 @@ export default class WritingProgressPlugin extends Plugin {
 
 				let file: TFile | null = this.app.workspace.getActiveFile()
 
-				if (file) {
+				if (file instanceof TFile) {
 					let wordCount = await this.getFileWordCount(file)
 					let wordCountProperty = this.settings.wordCountProperty
 
