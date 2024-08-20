@@ -99,12 +99,6 @@ export class WritingProgressView extends ItemView {
 
 		container.createEl("h4", { text: "Прогресс сцены" });
 		container.createEl("p", { text: wordCount + "/" + goal });
-		/*
-		let fileProgress = container.createEl("progress");
-		fileProgress.max = goal
-		fileProgress.value = wordCount
-*/
-
 		this.createProgressBar(goal, wordCount, container)
 	}
 
@@ -120,11 +114,7 @@ export class WritingProgressView extends ItemView {
 		container.createEl("h4", { text: "Ежедневный прогресс" });
 		container.createEl("p", { text: writtenToday + "/" + dailyGoal });
 
-		/*
-		let dailyProgress = container.createEl("progress");
-		dailyProgress.max = dailyGoal
-		dailyProgress.value = writtenToday
-*/
+
 		this.createProgressBar(dailyGoal, writtenToday, container)
 	}
 
@@ -691,7 +681,7 @@ export default class WritingProgressPlugin extends Plugin {
 		// Update global word count
 
 
-		/*
+		
 
 
 		this.registerEvent(
@@ -778,9 +768,9 @@ export default class WritingProgressPlugin extends Plugin {
 				}
 			})
 		);
-*/
 
-/*
+
+
 
 		this.registerInterval(
 			window.setInterval(() => {
@@ -796,7 +786,7 @@ export default class WritingProgressPlugin extends Plugin {
 		  }, 10000)
 	  );
 
-*/
+
 
 
 
