@@ -13,5 +13,194 @@ If your plugin does not need CSS, delete this file.
 
 .weekly-bar-chart, .weekly-line-chart {
     max-height: 350px;
+    aspect-ratio: 4/3;
 }
 
+.weekly-bar-chart canvas, 
+.weekly-line-chart canvas {
+    height: 100% !important;
+    width: 100% !important;
+}
+
+
+
+
+.monthly-bar-chart {
+    width: 100%;
+    max-width: 1000px;
+    max-height: 350px;
+    min-height: 200px;;
+    aspect-ratio: 3;
+}
+
+.monthly-line-chart {
+    width: 100%;
+    max-width: 1000px;
+    max-height: 550px;
+    min-height: 200px;;
+    aspect-ratio: 2;
+}
+
+
+
+.monthly-bar-chart canvas, 
+.monthly-line-chart canvas {
+    height: 100% !important;
+    width: 100% !important;
+
+
+}
+
+
+
+.statistic-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    margin: auto;
+
+
+}
+
+.charts-wrapper {
+    flex: 1 1 250px;
+    min-width: 250px;
+    margin: 0 40px 20px 0px;
+}
+
+.weekly-charts-wrapper {
+    max-width: fit-content;
+}
+
+.monthly-charts-wrapper {
+    max-width: 800px;
+}
+
+
+
+.monthly-statistic-view {
+   /* padding: var(--file-margins);*/
+   padding: 16px 5% 32px 5%;
+}
+
+
+.table-wrapper table {
+    border-collapse: collapse;
+    
+}
+
+.table-wrapper th,
+.table-wrapper td {
+    padding: var(--size-2-2) var(--size-4-2);
+    border: var(--table-border-width) solid var(--table-border-color);
+    max-width: var(--table-column-max-width);
+    min-width: var(--table-column-min-width);
+    vertical-align: var(--table-cell-vertical-alignment);
+}
+
+
+.table-wrapper td {
+    font-size: var(--table-text-size);
+    color: var(--table-text-color);
+}
+
+
+.table-wrapper th {
+    font-size: var(--table-header-size);
+    font-weight: var(--table-header-weight);
+    color: var(--table-header-color);
+    font-family: var(--table-header-font);
+    line-height: var(--line-height-tight);
+}
+
+
+
+
+
+
+
+
+
+
+
+.cm-html-embed th, .markdown-rendered th {
+    font-size: var(--table-header-size);
+    font-weight: var(--table-header-weight);
+    color: var(--table-header-color);
+    font-family: var(--table-header-font);
+    line-height: var(--line-height-tight);
+}
+
+
+.cm-html-embed td, .markdown-rendered td {
+    font-size: var(--table-text-size);
+    color: var(--table-text-color);
+}
+
+
+
+
+.cm-html-embed thead tr > th:first-child, .markdown-rendered thead tr > th:first-child {
+    border-left-width: var(--table-column-first-border-width);
+}
+
+
+.cm-html-embed thead tr > th, .markdown-rendered thead tr > th {
+    border-top-width: var(--table-header-border-width);
+    border-color: var(--table-header-border-color);
+}
+
+
+.cm-html-embed td, .markdown-rendered td, .cm-html-embed th, .markdown-rendered th {
+    padding: var(--size-2-2) var(--size-4-2);
+    border: var(--table-border-width) solid var(--table-border-color);
+    max-width: var(--table-column-max-width);
+    min-width: var(--table-column-min-width);
+    vertical-align: var(--table-cell-vertical-alignment);
+}
+
+
+
+
+
+
+
+progress {
+    border: 1px solid var(--background-modifier-border);
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    width: 130px;
+    border-radius: 8px;
+
+  }
+
+  progress::-webkit-progress-bar {
+    background-color: transparent;
+
+  }
+
+  progress::-webkit-progress-value {
+    border-radius: 8px;
+  }
+
+
+
+  progress.value-0::-webkit-progress-value {
+    background-color: var(--color-red) !important;
+}
+
+progress.value-30::-webkit-progress-value {
+    background-color: var(--color-yellow) !important;
+}
+
+progress.value-50::-webkit-progress-value {
+    background-color: var(--color-green) !important;
+}
+
+progress.value-80::-webkit-progress-value {
+    background-color: var(--color-cyan) !important;
+}
+
+progress.value-100::-webkit-progress-value {
+    background-color: var(--color-purple) !important;
+}
