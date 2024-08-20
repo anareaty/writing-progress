@@ -752,6 +752,7 @@ export default class WritingProgressPlugin extends Plugin {
 					let wordCountProperty = this.settings.wordCountProperty
 
 					this.timer = setTimeout(async() => {
+						//@ts-ignore
 						this.app.fileManager.processFrontMatter(file, (fm) => {
 							if (fm[wordCountProperty] != wordCount) {
 								fm[wordCountProperty] = wordCount
