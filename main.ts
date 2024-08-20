@@ -712,7 +712,7 @@ export default class WritingProgressPlugin extends Plugin {
 
 
 		this.registerEvent(
-			this.app.workspace.on("file-open", async (file: TFile) => {
+			this.app.workspace.on("file-open", async (file: TFile | null) => {
 				if (file == this.app.workspace.getActiveFile()) {
 					let progressView = this.getProgressView() 
 					if (progressView) {
