@@ -96,6 +96,7 @@ export class WritingProgressView extends ItemView {
 
 				let setGoalButton = container.createEl("p").createEl("button", { text: "Set words goal for file" });
 				setGoalButton.onclick = async () => {
+					//@ts-ignore
 					await this.plugin.setFileGoal(file);
 				};
 			}
