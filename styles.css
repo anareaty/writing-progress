@@ -57,6 +57,8 @@ If your plugin does not need CSS, delete this file.
     display: flex;
     flex-wrap: wrap;
     margin: auto;
+   
+    
 
 
 }
@@ -64,8 +66,14 @@ If your plugin does not need CSS, delete this file.
 .charts-wrapper {
     flex: 1 1 250px;
     min-width: 250px;
-    margin: 0 40px 20px 0px;
+    margin: 0 20px 20px 20px;
 }
+
+.table-wrapper {
+    margin: 0 20px 20px 20px;
+}
+
+
 
 .weekly-charts-wrapper {
     max-width: fit-content;
@@ -77,7 +85,8 @@ If your plugin does not need CSS, delete this file.
 
 
 
-.monthly-statistic-view {
+.monthly-statistic-view,
+.weekly-statistic-view {
    /* padding: var(--file-margins);*/
    padding: 16px 5% 32px 5%;
 }
@@ -204,3 +213,32 @@ progress.value-80::-webkit-progress-value {
 progress.value-100::-webkit-progress-value {
     background-color: var(--color-purple) !important;
 }
+
+
+.wp-inline-button {
+    --icon-size: 1em;
+    margin-left: 1em;
+    height: 24px;
+    padding: 4px 8px;
+    color: var(--icon-color);
+
+}
+
+
+.wp-button {
+    margin-right: 0.5em;
+    vertical-align: middle;
+}
+
+
+.wp-button span {
+    height: 100%;
+}
+
+
+
+.inline-icon {
+    --icon-size: 1em;
+    margin-right: 4px;
+    color: var(--icon-color);
+  }

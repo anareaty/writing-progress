@@ -1,28 +1,35 @@
-import { App, Editor, MarkdownView, MarkdownFileInfo, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace, Vault, TAbstractFile, TFile, View } from 'obsidian';
+import { App, Editor, MarkdownView, MarkdownFileInfo, setIcon, setTooltip, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace, Vault, TAbstractFile, TFile, View, EventRef } from 'obsidian';
 import Chart from 'chart.js/auto';
 import { Moment } from 'moment';
+//import { setTimeout } from 'timers/promises';
 
 // Remember to rename these classes and interfaces!
 
 interface WritingProgressPluginSettings {
 	dailyGoal: number;
+	weeklyGoal: number;
+	monthlyGoal: number;
 	todayStartWordCount: number;
 	currentGlobalWordCount: number;
 	dailyStats: any;
 	goalProperty: string;
 	wordCountProperty: string;
 	filterCountedFilesProperty: string;
+	startingCount: number;
 
 }
 
 const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
 	dailyGoal: 100,
+	weeklyGoal: 700,
+	monthlyGoal: 3000,
 	todayStartWordCount: 0,
 	currentGlobalWordCount: 0,
 	dailyStats: [],
 	goalProperty: "Цель",
 	wordCountProperty: "Слов",
-	filterCountedFilesProperty: "Цель"
+	filterCountedFilesProperty: "Цель",
+	startingCount: 0,
 }
 
 
@@ -36,57 +43,66 @@ const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
 export const WRITING_PROGRESS_VIEW_TYPE = "writing-progress-view";
 
 export class WritingProgressView extends ItemView {
-  plugin: WritingProgressPlugin;
+	plugin: WritingProgressPlugin;
 
 
-  constructor(leaf: WorkspaceLeaf, plugin: WritingProgressPlugin) {
-    super(leaf);
-	this.plugin = plugin;
-  }
+	constructor(leaf: WorkspaceLeaf, plugin: WritingProgressPlugin) {
+		super(leaf);
+		this.plugin = plugin;
+	}
 
-  getViewType() {
-    return WRITING_PROGRESS_VIEW_TYPE;
-  }
+	getViewType() {
+		return WRITING_PROGRESS_VIEW_TYPE;
+	}
 
-  getDisplayText(): string {
-	return ""
-  }
+	getDisplayText(): string {
+		return "Прогресс"
+	}
 
+	getIcon() {
+		return "goal"
+	}
 
-
-
-  async onOpen() {
-    
-	let file: TFile | null = this.app.workspace.getActiveFile()
-	this.updateView(file)
-
-
-
-
-
-
-
-	
-
-
-
-
-  }
+	async onOpen() {
+		
+		this.updateView()
+	}
 
 	async onClose() {
 	// Nothing to clean up.
 	}
 
 
-	async updateView (file: TFile | null) {
+	async updateView () {
+		let file: TFile | null = this.app.workspace.getActiveFile()
+	
 		const container = this.containerEl.children[1];
 		container.empty()
 		if (file) {
-			await this.renderWordCount(file, container)
-			this.renderDailyStats(container)
+			if (this.plugin.hasTrueProperty(file, this.plugin.settings.goalProperty)) {
+				await this.renderWordCount(file, container)
+				this.renderDailyStats(container)
+				
+
+
+
+
+
+
+
+
+			} else {
+				container.createEl("h4", { text: "No goal set" });
+
+				let setGoalButton = container.createEl("p").createEl("button", { text: "Set words goal for file" });
+				setGoalButton.onclick = async () => {
+					await this.plugin.setFileGoal(file);
+				};
+			}
 		} else {
 			container.createEl("h4", { text: "No file open" });
 		}
+	
 	}
 
 
@@ -112,7 +128,16 @@ export class WritingProgressView extends ItemView {
 		let writtenToday = currentGlobalWordCount - todayStartWordCount
 
 		container.createEl("h4", { text: "Ежедневный прогресс" });
-		container.createEl("p", { text: writtenToday + "/" + dailyGoal });
+		let statText = container.createEl("p")
+		statText.createEl("span", { text: writtenToday + "/" + dailyGoal });
+
+		let button = statText.createEl("button")
+		button.onclick = async () => {
+			await this.plugin.changeDailyGoal()
+		}
+		button.className = "wp-inline-button"
+		setIcon(button, "edit")
+		setTooltip(button, "Change daily goal", {delay: 1})
 
 
 		this.createProgressBar(dailyGoal, writtenToday, container)
@@ -136,6 +161,85 @@ export class WritingProgressView extends ItemView {
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class NumberInputModal extends Modal {
+	result: number | null
+	defaultVal: number | null
+	plugin: WritingProgressPlugin
+	resolve: any
+	reject: any
+	name: string
+
+	constructor(app: App, plugin: WritingProgressPlugin, name: string, defaultVal: number | null, resolve: any, reject: any) {
+	  super(app);
+	  this.eventInput = this.eventInput.bind(this);
+	  this.defaultVal = defaultVal
+	  this.plugin = plugin;
+	  this.resolve = resolve 
+	  this.reject = reject
+	  this.name = name
+  
+	}
+	async eventInput(e: any) {
+	  if (e.key === "Enter") {
+		e.preventDefault();
+		this.resolve(this.result);
+		this.close();
+	  }
+	}
+	onOpen() {
+	  const { contentEl } = this;
+	  contentEl.createEl("h1", { text: this.name });
+	  const inputSetting = new Setting(contentEl);
+	  inputSetting.settingEl.style.display = "grid";
+  
+	  inputSetting.addText((text) => {
+		text.inputEl.type = "number";
+		text.inputEl.className = "number-input-el";
+		text.setValue(this.defaultVal + "");
+		this.result = this.defaultVal;
+		text.onChange((value) => {
+		  if (Number.isNaN(value))
+			this.result = 0;
+		  else
+			this.result = Number(value);
+		});
+		text.inputEl.style.width = "100%";
+	  });
+  
+	  new Setting(contentEl)
+	  .addButton((btn) => btn.setButtonText("\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C")
+	  .setCta()
+	  .onClick(async () => {
+		this.resolve(this.result);
+		this.close();
+	  }));
+	  contentEl.addEventListener("keydown", this.eventInput);
+	}
+	onClose() {
+	  const { contentEl } = this;
+	  contentEl.empty();
+	  this.contentEl.removeEventListener("keydown", this.eventInput);
+	}
+  };
+
 
 
 
@@ -182,7 +286,7 @@ export class WritingStatisticView extends ItemView {
 
 		const dailyStats = this.plugin.settings.dailyStats
 		const dailyGoal = this.plugin.settings.dailyGoal
-		const weeklyGoal = 700
+		const weeklyGoal = this.plugin.settings.weeklyGoal
 
 		let data = dailyStats
 		.filter((stat: any) => {
@@ -199,7 +303,7 @@ export class WritingStatisticView extends ItemView {
 			} else {
 				let date = window.moment().day(weekDay).week(currentWeek).format("YYYY-MM-DD")
 
-				let prevEndData = 0
+				let prevEndData = this.plugin.settings.startingCount;
 				if (weekDay == 1) {
 					let prevData = dailyStats.findLast((stat: any) => {
 						return window.moment(stat.date).format("x") < window.moment(date).format("x")
@@ -239,6 +343,7 @@ export class WritingStatisticView extends ItemView {
 			let written = stat.endWordCount - stat.startWordCount
 			item.written = written
 			item.writtenAll = stat.endWordCount
+			item.writtenThisPeriod = stat.endWordCount - firstDayStart
 
 			let goal = dailyGoal - item.written
 			if (goal < 0 ) goal = 0
@@ -254,7 +359,7 @@ export class WritingStatisticView extends ItemView {
 
 
 		container.empty()
-		let contentWrapper = container.createEl("div", {cls: "monthly-statistic-view"});
+		let contentWrapper = container.createEl("div", {cls: "weekly-statistic-view"});
 		contentWrapper.createEl("h1", { text: this.getDisplayText() });
 
 
@@ -263,13 +368,34 @@ export class WritingStatisticView extends ItemView {
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
+		let tableWrapper = statisticWrapper.createEl("div", {cls: "table-wrapper weekly-stats-table"});
 		let chartsWrapper = statisticWrapper.createEl("div", {cls: "charts-wrapper weekly-charts-wrapper"});
 
-		let tableWrapper = statisticWrapper.createEl("div", {cls: "table-wrapper weekly-stats-table"});
+		
 		let barChartWrapper = chartsWrapper.createEl("div", {cls: "chart-wrapper weekly-bar-chart"});
 		let lineChartWrapper = chartsWrapper.createEl("div", {cls: "chart-wrapper weekly-line-chart"});
 
-		this.createTableFromData(weekData, tableWrapper, ["date", "written", "goal", "writtenAll", "achive"])
+
+		let buttonWrapper = tableWrapper.createEl("p")
+
+		let refreshButton = buttonWrapper.createEl("button", {cls: "wp-button"})
+		refreshButton.onclick = () => {
+			this.renderWeeklyStats()
+		}
+		let refreshIcon = refreshButton.createEl("div", {cls: "inline-icon"})
+		setIcon(refreshIcon, "rotate-cw")
+		refreshButton.createEl("span", {text: "Refresh"})
+
+		let changeWeeklyGoalButton = buttonWrapper.createEl("button", {cls: "wp-button"})
+		changeWeeklyGoalButton.onclick = () => {
+			this.plugin.changeWeeklyGoal()
+		}
+		let changeWeeklyGoalIcon = changeWeeklyGoalButton.createEl("div", {cls: "inline-icon"})
+		setIcon(changeWeeklyGoalIcon, "goal")
+		changeWeeklyGoalButton.createEl("span", {text: "Change weekly goal"})
+
+
+		this.createTableFromData(weekData, tableWrapper, ["date", "written", "goal", "writtenThisPeriod", "achive"])
 		this.createBarChartFromData(weekData, dailyGoal, barChartWrapper)
 		this.createLineChartFromData(weekData, weeklyGoal, firstDayStart, lastDayEnd, lineChartWrapper)
 	}
@@ -290,7 +416,7 @@ export class WritingStatisticView extends ItemView {
 
 		const dailyStats = this.plugin.settings.dailyStats
 		const dailyGoal = this.plugin.settings.dailyGoal
-		const monthlyGoal = 3000
+		const monthlyGoal = this.plugin.settings.monthlyGoal
 
 		let data = dailyStats
 		.filter((stat: any) => {
@@ -307,7 +433,7 @@ export class WritingStatisticView extends ItemView {
 			} else {
 				let date = window.moment().date(monthDay).month(currentMonth).format("YYYY-MM-DD")
 
-				let prevEndData = 0
+				let prevEndData = this.plugin.settings.startingCount;
 				if (monthDay == 1) {
 					let prevData = dailyStats.findLast((stat: any) => {
 						return window.moment(stat.date).unix() < window.moment(date).unix()
@@ -348,6 +474,7 @@ export class WritingStatisticView extends ItemView {
 			let written = stat.endWordCount - stat.startWordCount
 			item.written = written
 			item.writtenAll = stat.endWordCount
+			item.writtenThisPeriod = stat.endWordCount - firstDayStart
 
 			let goal = dailyGoal - item.written
 			if (goal < 0 ) goal = 0
@@ -380,19 +507,36 @@ export class WritingStatisticView extends ItemView {
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
+		let tableWrapper = statisticWrapper.createEl("div", {cls: "table-wrapper monthly-stats-table"});
 		let chartsWrapper = statisticWrapper.createEl("div", {cls: "charts-wrapper monthly-charts-wrapper"});
 		let barChartWrapper = chartsWrapper.createEl("div", {cls: "chart-wrapper monthly-bar-chart"});
 		let lineChartWrapper = chartsWrapper.createEl("div", {cls: "chart-wrapper monthly-line-chart"});
-		let tableWrapper = statisticWrapper.createEl("div", {cls: "table-wrapper monthly-stats-table"});
+		
+
+
+		let buttonWrapper = tableWrapper.createEl("p")
+
+		let refreshButton = buttonWrapper.createEl("button", {cls: "wp-button"})
+		refreshButton.onclick = () => {
+			this.renderMonthlyStats()
+		}
+		let refreshIcon = refreshButton.createEl("div", {cls: "inline-icon"})
+		setIcon(refreshIcon, "rotate-cw")
+		refreshButton.createEl("span", {text: "Refresh"})
+
+		let changeMonthlyGoalButton = buttonWrapper.createEl("button", {cls: "wp-button"})
+		changeMonthlyGoalButton.onclick = () => {
+			this.plugin.changeMonthlyGoal()
+		}
+		let changeMonthlyGoalIcon = changeMonthlyGoalButton.createEl("div", {cls: "inline-icon"})
+		setIcon(changeMonthlyGoalIcon, "goal")
+		changeMonthlyGoalButton.createEl("span", {text: "Change monthly goal"})
+
 
 		
 		this.createBarChartFromData(monthData, dailyGoal, barChartWrapper)
-
-
-
 		this.createLineChartFromData(monthData, monthlyGoal, firstDayStart, lastDayEnd, lineChartWrapper)
-
-		this.createTableFromData(monthData, tableWrapper, ["date", "written", "goal", "writtenAll", "achive"])
+		this.createTableFromData(monthData, tableWrapper, ["date", "written", "goal", "writtenThisPeriod", "achive"])
 		
 	}
 
@@ -430,7 +574,7 @@ export class WritingStatisticView extends ItemView {
 			"ru": {
 				date: "Дата",
 				written: "Написано", 
-				writtenAll: "Всего",
+				writtenThisPeriod: "Всего",
 				goal: "Цель",
 				achive: "Значок"
 			},
@@ -522,7 +666,9 @@ export class WritingStatisticView extends ItemView {
 
 		if (this.linechart) {
 			this.linechart.destroy()
-		} 
+		}
+		
+		goal = goal + firstDayStart
 
 		data = [...data]
 		data.unshift({
@@ -553,7 +699,7 @@ export class WritingStatisticView extends ItemView {
 				maintainAspectRatio: false,
 				scales: {
 					y: {
-					  min: firstDayStart - 7,
+					  min: firstDayStart - maxScale * 0.01,
 					  max: maxScale,
 					}
 				}, 
@@ -687,26 +833,9 @@ export default class WritingProgressPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on("layout-change", async () => {
 				this.updateGlobalWordCount()
-
-
-				// Update progress View
-
-				let file: TFile | null = this.app.workspace.getActiveFile()
-
-				let progressView = this.getProgressView() 
-				if (progressView) {
-					progressView.updateView(file)
-				}
-
-
-
-				// Update statistic view
-
-				let statisticView = this.getStatisticView()
-				if (statisticView) {
-					//statisticView.renderWeeklyStats()
-					//statisticView.renderMonthlyStats()
-				}
+				this.updateProgressView()
+				this.updateWeeklyStats()
+				this.updateMonthlyStats()
 			})
 		);
 
@@ -716,7 +845,7 @@ export default class WritingProgressPlugin extends Plugin {
 				if (file == this.app.workspace.getActiveFile()) {
 					let progressView = this.getProgressView() 
 					if (progressView) {
-						progressView.updateView(file)
+						progressView.updateView()
 					}
 				}
 			})
@@ -750,11 +879,12 @@ export default class WritingProgressPlugin extends Plugin {
 				if (file instanceof TFile) {
 					let wordCount = await this.getFileWordCount(file)
 					let wordCountProperty = this.settings.wordCountProperty
+					let goalProperty = this.settings.goalProperty;
 
 					this.timer = setTimeout(async() => {
 						//@ts-ignore
 						this.app.fileManager.processFrontMatter(file, (fm) => {
-							if (fm[wordCountProperty] != wordCount) {
+							if (fm[wordCountProperty] != wordCount && fm[goalProperty]) {
 								fm[wordCountProperty] = wordCount
 							}
 						})
@@ -763,44 +893,144 @@ export default class WritingProgressPlugin extends Plugin {
 
 				// Update progress View
 
-				let progressView = this.getProgressView() 
-				if (progressView) {
-					progressView.updateView(file)
-				}
+				this.updateProgressView()
 			})
 		);
 
-
-
-
-		this.registerInterval(
-			window.setInterval(() => {
-				let statisticView = this.getStatisticView()
-				if (statisticView) {
-					let newSettings = JSON.stringify(this.settings)
-					if (oldSettings != newSettings) {
-						//statisticView.renderWeeklyStats()
-						//statisticView.renderMonthlyStats()
-						oldSettings = newSettings
-					}
-				}
-		  }, 10000)
-	  );
-
-
-
-
-
-
-
-
-
-	
 	}
 
 	onunload() {
 
 	}
+
+
+
+
+	updateProgressView() {
+		let progressView = this.getProgressView() 
+		if (progressView) {
+			progressView.updateView()
+		}
+	}
+
+
+
+	updateWeeklyStats() {
+		let statisticView = this.getWeeklyStatisticView()
+		if (statisticView) {
+			statisticView.renderWeeklyStats()
+		}
+	}
+
+
+	updateMonthlyStats() {
+		let statisticView = this.getMonthlyStatisticView()
+		if (statisticView) {
+			statisticView.renderMonthlyStats()
+		}
+	}
+
+
+
+
+	async clearAllStats() {
+    
+		this.settings.dailyStats = []
+		this.settings.startingCount = this.settings.currentGlobalWordCount
+		this.saveSettings()
+		this.updateProgressView()
+		new Notice("All stats cleared")
+		
+	  }
+	
+	
+	
+	
+	
+	  async clearTodayStats() {
+		let dailyStats = this.settings.dailyStats;
+		let globalWordCount = this.settings.currentGlobalWordCount;
+		let today = window.moment().format("YYYY-MM-DD");
+		let todayStat = dailyStats.find((stat: any) => stat.date == today);
+		this.settings.todayStartWordCount = globalWordCount
+		if (todayStat) {
+		  todayStat.startWordCount = globalWordCount
+		}
+
+		this.saveSettings()
+		this.updateProgressView()
+		new Notice("Today stats cleared")
+		
+	  }
+	
+	
+	
+	  async setFileGoal(file: TFile) {
+		let goalProperty = this.settings.goalProperty;
+		let num = await this.selectNumber("File goal", null)
+		if (num) {
+			await this.app.fileManager.processFrontMatter(file, (fm) => {
+				fm[goalProperty] = num
+			})
+			setTimeout(() => {
+				this.updateProgressView()
+			}, 250);
+		}
+	  }
+
+
+
+
+
+	  async changeDailyGoal() {
+		let dailyGoal = this.settings.dailyGoal;
+		let num: number = await this.selectNumber("Daily goal", dailyGoal)
+		if (num) {
+			this.settings.dailyGoal = num
+			this.saveSettings()
+			setTimeout(() => {
+				this.updateProgressView()
+			}, 250);
+		}
+	  }
+
+
+	  async changeWeeklyGoal() {
+		let weeklyGoal = this.settings.weeklyGoal;
+		let num: number = await this.selectNumber("Weekly goal", weeklyGoal)
+		if (num) {
+			this.settings.weeklyGoal = num
+			this.saveSettings()
+			setTimeout(() => {
+				this.updateWeeklyStats()
+			}, 250);
+		}
+	  }
+
+
+	  async changeMonthlyGoal() {
+		let monthlyGoal = this.settings.monthlyGoal;
+		let num: number = await this.selectNumber("Monthly goal", monthlyGoal)
+		if (num) {
+			this.settings.monthlyGoal = num
+			this.saveSettings()
+			setTimeout(() => {
+				this.updateMonthlyStats()
+			}, 250);
+		}
+	  }
+
+
+
+
+	
+	
+	  async selectNumber(name: string, defaultVal: number | null): Promise<number> {
+		let data: Promise<number> = new Promise((resolve, reject) => {
+		  new NumberInputModal(this.app, this, name, defaultVal, resolve, reject).open() 
+		})
+		return data
+	  }
 
 
 
@@ -833,7 +1063,9 @@ export default class WritingProgressPlugin extends Plugin {
 			todayStat.endWordCount = globalWordCount
 		}
 
-		
+		if (dailyStats.length > 0) {
+			this.settings.startingCount = dailyStats[0].startWordCount
+		}
 
 		await this.saveSettings()
 	}
@@ -846,20 +1078,14 @@ export default class WritingProgressPlugin extends Plugin {
 		
 		let globalWordCount = 0
 		let allFiles = this.app.vault.getMarkdownFiles()
-
-
 		let goalProperty = this.settings.goalProperty
+		allFiles = allFiles.filter(file => this.hasTrueProperty(file, goalProperty))
+
+		
 
 		for (let file of allFiles) {
-			if (this.hasTrueProperty(file, goalProperty)) {
-
-
-
-				let fileWordCount = await this.getFileWordCount(file)
-
-				
-				globalWordCount += fileWordCount
-			}
+			let fileWordCount = await this.getFileWordCount(file)
+			globalWordCount += fileWordCount
 		}
 
 
@@ -872,6 +1098,12 @@ export default class WritingProgressPlugin extends Plugin {
 			await this.updateDailyStats()
 
 		}
+	}
+
+
+
+	async setDailyGoal() {
+
 	}
 
 
@@ -942,10 +1174,21 @@ export default class WritingProgressPlugin extends Plugin {
 
 
 
-	getStatisticView() {
+	getWeeklyStatisticView() {
 		let view: any
 		this.app.workspace.getLeavesOfType(WEEKLY_STATISTIC_VIEW_TYPE).forEach((leaf) => {
 			if (leaf.view instanceof WeeklyStatisticView) {
+			  view = leaf.view
+			}
+		});
+		return view
+	}
+
+
+	getMonthlyStatisticView() {
+		let view: any
+		this.app.workspace.getLeavesOfType(MONTHLY_STATISTIC_VIEW_TYPE).forEach((leaf) => {
+			if (leaf.view instanceof MonthlyStatisticView) {
 			  view = leaf.view
 			}
 		});
@@ -1049,5 +1292,66 @@ class SampleSettingTab extends PluginSettingTab {
 	display(): void {
 		const {containerEl} = this;
 		containerEl.empty();
+
+		
+
+
+		new Setting(containerEl)
+		.setName("Daily goal")
+		.addText((text) => {
+			text.inputEl.type = "number"
+			text.setValue(this.plugin.settings.dailyGoal + "")
+			text.onChange((value) => {
+				this.plugin.settings.dailyGoal = Number(value)
+				this.plugin.saveSettings()
+				this.plugin.updateProgressView()
+			})
+		})
+
+
+		new Setting(containerEl)
+		.setName("Weekly goal")
+		.addText((text) => {
+			text.inputEl.type = "number"
+			text.setValue(this.plugin.settings.weeklyGoal + "")
+			text.onChange((value) => {
+				this.plugin.settings.weeklyGoal = Number(value)
+				this.plugin.saveSettings()
+				this.plugin.updateWeeklyStats()
+			})
+		})
+
+
+		new Setting(containerEl)
+		.setName("Monthly goal")
+		.addText((text) => {
+			text.inputEl.type = "number"
+			text.setValue(this.plugin.settings.monthlyGoal + "")
+			text.onChange((value) => {
+				this.plugin.settings.monthlyGoal = Number(value)
+				this.plugin.saveSettings()
+				this.plugin.updateMonthlyStats()
+			})
+		})
+
+
+		new Setting(containerEl)
+		.setName("Clear saved statistics")
+		.addButton((btn) => {
+			btn.setButtonText("Clear today stats")
+			.setClass("mod-warning")
+			.onClick(() => {
+				this.plugin.clearTodayStats()
+			})
+		})
+		.addButton((btn) => {
+			btn.setButtonText("Clear all stats")
+			btn.setClass("mod-warning")
+			.onClick(() => {
+				this.plugin.clearAllStats()
+			})
+		})
 	}
+
+
 }
