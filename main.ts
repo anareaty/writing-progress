@@ -938,6 +938,7 @@ export default class WritingProgressPlugin extends Plugin {
     
 		this.settings.dailyStats = []
 		this.settings.startingCount = this.settings.currentGlobalWordCount
+		this.settings.todayStartWordCount = this.settings.currentGlobalWordCount
 		this.saveSettings()
 		this.updateProgressView()
 		new Notice("All stats cleared")
@@ -1052,13 +1053,13 @@ export default class WritingProgressPlugin extends Plugin {
 
 			todayStat = {
 				date: today,
-				startWordCount: globalWordCount,
+				startWordCount: this.settings.startingCount,
 				endWordCount: globalWordCount
 			}
 
 			dailyStats.push(todayStat)
 			this.settings.dailyStats = dailyStats
-			this.settings.todayStartWordCount = globalWordCount
+			this.settings.todayStartWordCount = this.settings.startingCount
 
 		} else {
 			todayStat.endWordCount = globalWordCount
@@ -1066,6 +1067,8 @@ export default class WritingProgressPlugin extends Plugin {
 
 		if (dailyStats.length > 0) {
 			this.settings.startingCount = dailyStats[0].startWordCount
+
+			
 		}
 
 		await this.saveSettings()
