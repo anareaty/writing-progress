@@ -698,8 +698,8 @@ export class WritingStatisticView extends ItemView {
 		contentWrapper.createEl("h1", { text: this.getDisplayText() });
 
 
-		if (lastDayEnd >= monthlyGoal) {
-			contentWrapper.createEl("h3", { text: strings.monthlyGoalCongratulation });
+		if (lastDayEnd - firstDayStart >= monthlyGoal) {
+			contentWrapper.createEl("p", { text: strings.monthlyGoalCongratulation });
 		} else {
 			contentWrapper.createEl("p", { text: strings.monthlyGoal + ": " + this.plugin.settings.monthlyGoal });
 		}
