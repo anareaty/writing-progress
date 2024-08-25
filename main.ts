@@ -526,7 +526,13 @@ export class WritingStatisticView extends ItemView {
 			let item: any = {}
 			let date = window.moment(stat.date)
 			let month = date.format("MMM").slice(0,3)
-			let formattedDate = date.format("dd, DD ") + month
+		
+
+			//let formattedDate = date.format("dd, DD ") + month;
+
+			let formattedDate = date.format("dd");
+
+
 			formattedDate = formattedDate[0].toUpperCase() + formattedDate.slice(1)
 			item.date = formattedDate
 

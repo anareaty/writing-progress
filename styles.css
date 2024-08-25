@@ -137,7 +137,7 @@ If your plugin does not need CSS, delete this file.
 .mod-sidedock .weekly-bar-chart,
 .mod-sidedock .weekly-line-chart {
     max-height: 250px;
-    aspect-ratio: 3/2;
+  /*  aspect-ratio: 3/2;*/
     
 }
 
