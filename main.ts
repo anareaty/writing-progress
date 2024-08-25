@@ -88,12 +88,12 @@ const LocaleMap: any = {
 		ru: "Статистика месяца"
 	},
 	weeklyGoalCongratulation: {
-		en: " ✨ Congratulations! Weekly goal is achieved! ✨",
-		ru: " ✨ Поздравляю! Еженедельная цель достигнута! ✨"
+		en: " 🏆 Weekly goal is achieved!",
+		ru: " 🏆 Еженедельная цель достигнута!"
 	},
 	monthlyGoalCongratulation: {
-		en: " ✨ Congratulations! Monthly goal is achieved! ✨",
-		ru: " ✨ Поздравляю! Ежемесячная цель достигнута! ✨"
+		en: " 🏆 Monthly goal is achieved!",
+		ru: " 🏆 Ежемесячная цель достигнута!"
 	},
 	progress: {
 		en: "Progress",
@@ -549,8 +549,8 @@ export class WritingStatisticView extends ItemView {
 		contentWrapper.createEl("h1", { text: this.getDisplayText() });
 
 
-		if (lastDayEnd >= weeklyGoal) {
-			contentWrapper.createEl("h3", { text: strings.weeklyGoalCongratulation });
+		if (lastDayEnd - firstDayStart >= weeklyGoal) {
+			contentWrapper.createEl("p", { text: strings.weeklyGoalCongratulation });
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
