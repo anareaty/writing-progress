@@ -551,6 +551,8 @@ export class WritingStatisticView extends ItemView {
 
 		if (lastDayEnd - firstDayStart >= weeklyGoal) {
 			contentWrapper.createEl("p", { text: strings.weeklyGoalCongratulation });
+		} else {
+			contentWrapper.createEl("p", { text: strings.weeklyGoal + ": " + this.plugin.settings.weeklyGoal });
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
@@ -698,6 +700,8 @@ export class WritingStatisticView extends ItemView {
 
 		if (lastDayEnd >= monthlyGoal) {
 			contentWrapper.createEl("h3", { text: strings.monthlyGoalCongratulation });
+		} else {
+			contentWrapper.createEl("p", { text: strings.monthlyGoal + ": " + this.plugin.settings.monthlyGoal });
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});

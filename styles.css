@@ -105,10 +105,40 @@ If your plugin does not need CSS, delete this file.
    --h1-font: var(--h4-font);
 }
 
+
+
+.mod-sidedock .monthly-statistic-view h1,
+.mod-sidedock .weekly-statistic-view h1 {
+   margin-bottom: 0 !important;
+   margin-top: 0 !important;
+}
+
+
+
+
+.mod-sidedock .monthly-statistic-view h1 + p,
+.mod-sidedock .weekly-statistic-view h1 + p {
+   margin-bottom: 0.3em !important;
+
+}
+
 .mod-sidedock .statistic-wrapper {
     font-size: var(--nav-item-size);
    --table-header-size: var(--nav-item-size);
    --table-text-size: var(--nav-item-size);
+}
+
+.mod-sidedock .weekly-stats-table {
+    margin-bottom: 10px;
+}
+
+
+
+.mod-sidedock .weekly-bar-chart,
+.mod-sidedock .weekly-line-chart {
+    max-height: 250px;
+    aspect-ratio: 3/2;
+    
 }
 
 
