@@ -162,6 +162,10 @@ const LocaleMap: any = {
 	save: {
 		en: "Save",
 		ru: "Сохранить"
+	},
+	words: {
+		en: "words",
+		ru: "слов"
 	}
 }
 
@@ -552,7 +556,7 @@ export class WritingStatisticView extends ItemView {
 		if (lastDayEnd - firstDayStart >= weeklyGoal) {
 			contentWrapper.createEl("p", { text: strings.weeklyGoalCongratulation });
 		} else {
-			contentWrapper.createEl("p", { text: strings.weeklyGoal + ": " + this.plugin.settings.weeklyGoal });
+			contentWrapper.createEl("p", { text: strings.weeklyGoal + ": " + this.plugin.settings.weeklyGoal + " " + strings.words });
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
@@ -701,7 +705,7 @@ export class WritingStatisticView extends ItemView {
 		if (lastDayEnd - firstDayStart >= monthlyGoal) {
 			contentWrapper.createEl("p", { text: strings.monthlyGoalCongratulation });
 		} else {
-			contentWrapper.createEl("p", { text: strings.monthlyGoal + ": " + this.plugin.settings.monthlyGoal });
+			contentWrapper.createEl("p", { text: strings.monthlyGoal + ": " + this.plugin.settings.monthlyGoal + " " + strings.words });
 		}
 
 		let statisticWrapper = contentWrapper.createEl("div", {cls: "statistic-wrapper"});
