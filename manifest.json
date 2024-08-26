@@ -1,7 +1,7 @@
 {
 	"id": "writing-progress",
 	"name": "Writing progress",
-	"version": "1.1.6",
+	"version": "1.1.7",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
 	"author": "Obsidian",

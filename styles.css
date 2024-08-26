@@ -300,3 +300,12 @@ progress.value-100::-webkit-progress-value {
 
 
 
+  .weekly-stats-table {
+    --table-header-size: 0.9em;
+    --table-text-size: 0.9em;
+  }
+
+
+  .workspace-leaf-content[data-type="writing-progress-view"] .view-content > * {
+    padding-left: 8px;
+  }

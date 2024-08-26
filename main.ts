@@ -111,10 +111,6 @@ const LocaleMap: any = {
 		en: "Clear saved statistics",
 		ru: "Удалить сохранённую статистику"
 	},
-	clearTodayStats: {
-		en: "Clear today stats",
-		ru: "Обнулить сегодняшнюю статистику"
-	},
 	clearAllStats: {
 		en: "Clear all stats",
 		ru: "Удалить всю статистику"
@@ -166,6 +162,30 @@ const LocaleMap: any = {
 	words: {
 		en: "words",
 		ru: "слов"
+	}, 
+	newSession: {
+		en: "New session",
+		ru: "Новая сессия"
+	},
+	sessionGoal: {
+		en: "Session goal",
+		ru: "Цель сессии"
+	},
+	changeSessionGoal: {
+		en: "Change session goal",
+		ru: "Изменить цель сессии"
+	},
+	removeSession: {
+		en: "Remove session",
+		ru: "Удалить сессию"
+	},
+	sessionProgress: {
+		en: "Session progress",
+		ru: "Прогресс сессии"
+	},
+	todayStartingCount: {
+		en: "Today starting count",
+		ru: "Сегодняшнее стартовое количество слов"
 	}
 }
 
@@ -181,13 +201,12 @@ interface WritingProgressPluginSettings {
 	goalProperty: string;
 	wordCountProperty: string;
 	filterCountedFilesProperty: string;
-
 	startingCount: number;
 	currentGlobalWordCount: number;
 	dailyStats: any;
-
-	
-	
+	sessionOn: boolean;
+  	sessionGoal: number;
+  	sessionStart: number;
 
 }
 
@@ -201,6 +220,9 @@ const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
 	wordCountProperty: "words",
 	filterCountedFilesProperty: "goal",
 	startingCount: 0,
+	sessionOn: false,
+  	sessionGoal: 100,
+  	sessionStart: 0
 
 }
 
@@ -254,8 +276,14 @@ export class WritingProgressView extends ItemView {
 			if (this.plugin.hasTrueProperty(file, this.plugin.settings.goalProperty)) {
 				let wordCountContainer = container.createEl("div")
 				let dailyStatsContainer = container.createEl("div")
+				let sessionStatsContainer = container.createEl("div");
 				await this.renderWordCount(file, wordCountContainer)
 				this.renderDailyStats(dailyStatsContainer)
+				await this.renderWordCount(file, wordCountContainer);
+        		await this.renderDailyStats(dailyStatsContainer);
+				if (this.plugin.settings.sessionOn) {
+					await this.renderSessionStats(sessionStatsContainer);
+				}
 				
 
 
@@ -302,7 +330,18 @@ export class WritingProgressView extends ItemView {
 		let dailyGoal = this.plugin.settings.dailyGoal
 		let todayStartWordCount = this.plugin.getTodayStartWordCount()
 		let currentGlobalWordCount = this.plugin.settings.currentGlobalWordCount
-		let writtenToday = currentGlobalWordCount - todayStartWordCount
+
+		let todaySkip = 0
+		let todayStat = this.plugin.getDailyStat()
+		if (todayStat) {
+		if (todayStat.skip) todaySkip = todayStat.skip;
+		}
+
+
+		let writtenToday = currentGlobalWordCount - todayStartWordCount - todaySkip;
+
+
+		
 		let strings = this.plugin.getLocalStrings()
 
 		container.createEl("h4", { text: strings.dailyProgress });
@@ -318,8 +357,74 @@ export class WritingProgressView extends ItemView {
 		setTooltip(button, strings.changeDailyGoal, {delay: 1})
 
 
+
+		let newSessionButton = statText.createEl("button");
+    	newSessionButton.className = "wp-inline-button";
+    	setIcon(newSessionButton, "timer-reset");
+    	setTooltip(newSessionButton, strings.newSession, { delay: 1 });
+		newSessionButton.onclick = () => {
+			this.plugin.settings.sessionOn = true 
+			this.plugin.settings.sessionStart = this.plugin.settings.currentGlobalWordCount
+			this.plugin.saveSettings();
+			this.plugin.updateProgressView();
+		
+		};
+
+
 		this.createProgressBar(dailyGoal, writtenToday, container)
 	}
+
+
+
+	async renderSessionStats(container: Element) {
+		container.empty();
+		let sessionGoal = this.plugin.settings.sessionGoal
+		let sessionStartWordCount = this.plugin.settings.sessionStart;
+		let currentGlobalWordCount = this.plugin.settings.currentGlobalWordCount;
+		let writtenAtSession = currentGlobalWordCount - sessionStartWordCount;
+	
+		let strings = this.plugin.getLocalStrings();
+		container.createEl("h4", { text: strings.sessionProgress });
+		let statText = container.createEl("p");
+		statText.createEl("span", { text: writtenAtSession + "/" + sessionGoal });
+	
+	
+	
+		let changeSessionGoalButton = statText.createEl("button");
+		changeSessionGoalButton.onclick = async () => {
+		  await this.plugin.changeSessionGoal();
+		};
+		changeSessionGoalButton.className = "wp-inline-button";
+		setIcon(changeSessionGoalButton, "goal");
+		setTooltip(changeSessionGoalButton, strings.changeSessionGoal, { delay: 1 });
+	
+	
+	
+	
+	
+		let removeSessionButton = statText.createEl("button");
+		removeSessionButton.onclick = async () => {
+		  this.plugin.settings.sessionOn = false
+		  this.plugin.saveSettings();
+		  this.plugin.updateProgressView();
+		};
+		removeSessionButton.className = "wp-inline-button";
+		setIcon(removeSessionButton, "x");
+		setTooltip(removeSessionButton, strings.removeSession, { delay: 1 });
+	
+	
+	
+	
+		
+	
+	 
+	
+	
+	
+	
+	
+		this.createProgressBar(sessionGoal, writtenAtSession, container);
+	  }
 
 
 	createProgressBar(max: number, value: number, container: Element) {
@@ -538,6 +643,7 @@ export class WritingStatisticView extends ItemView {
 
 			let written = stat.endWordCount - stat.startWordCount
 			item.written = written
+			item.skip = stat.skip
 			item.writtenAll = stat.endWordCount
 			item.writtenThisPeriod = stat.endWordCount - firstDayStart
 
@@ -679,6 +785,7 @@ export class WritingStatisticView extends ItemView {
 
 			let written = stat.endWordCount - stat.startWordCount
 			item.written = written
+			item.skip = stat.skip
 			item.writtenAll = stat.endWordCount
 			item.writtenThisPeriod = stat.endWordCount - firstDayStart
 
@@ -774,9 +881,18 @@ export class WritingStatisticView extends ItemView {
 
 
 
-	createTableFromData(data: any, container: Element, columns: string[]) {
+	createTableFromData(data: any[], container: Element, columns: string[]) {
 
-		
+		data = JSON.parse(JSON.stringify(data))
+		let skips = 0
+		data = data.map(d => {
+		if (d.skip) {
+			skips = skips + d.skip
+			d.written = d.written - d.skip
+		}
+		d.writtenThisPeriod = d.writtenThisPeriod - skips 
+		return d
+		})
 
 
 		let localStrings = this.plugin.getLocalStrings()
@@ -813,7 +929,20 @@ export class WritingStatisticView extends ItemView {
 	
 
 
-	createBarChartFromData(data: any, goal: number, container: Element) {
+	createBarChartFromData(data: any[], goal: number, container: Element) {
+
+		data = JSON.parse(JSON.stringify(data))
+		let skips = 0
+		data = data.map(d => {
+		if (d.skip) {
+			skips = skips + d.skip
+			d.written = d.written - d.skip
+		}
+		d.writtenThisPeriod = d.writtenThisPeriod - skips 
+		return d
+		})
+
+
 		let strings = this.plugin.getLocalStrings()
 		let canvas = container.createEl("canvas");
 
@@ -858,7 +987,7 @@ export class WritingStatisticView extends ItemView {
 
 
 
-	createLineChartFromData(data: any, goal: number, firstDayStart: number, lastDayEnd: number, container: Element) {
+	createLineChartFromData(data: any[], goal: number, firstDayStart: number, lastDayEnd: number, container: Element) {
 		let strings = this.plugin.getLocalStrings()
 
 		if (this.linechart) {
@@ -867,7 +996,19 @@ export class WritingStatisticView extends ItemView {
 		
 		goal = goal + firstDayStart
 
-		data = [...data]
+		let skips = 0
+		data = JSON.parse(JSON.stringify(data))
+		data = data.map(d => {
+		if (d.skip) {
+			skips = skips + d.skip
+		}
+		d.written = d.written - skips
+		d.writtenAll = d.writtenAll - skips 
+		d.writtenThisPeriod = d.writtenThisPeriod - skips 
+		return d
+		})
+
+	
 		data.unshift({
 			date: 0,
 			writtenAll: firstDayStart
@@ -1035,14 +1176,14 @@ export default class WritingProgressPlugin extends Plugin {
 			})
 		);
 
-
+/*
 		this.registerEvent(
 			this.app.workspace.on("active-leaf-change", async () => {
 				this.updateGlobalWordCount()
 				this.updateAllViews()
 			})
 		);
-
+*/
 
 		this.registerEvent(
 			this.app.workspace.on("file-open", async (file: TFile | null) => {
@@ -1153,6 +1294,15 @@ export default class WritingProgressPlugin extends Plugin {
 
 
 
+	getDailyStat() {
+		let today = window.moment().format("YYYY-MM-DD");
+		let dailyStats = this.settings.dailyStats;
+		let todayStat = dailyStats.find((stat: any) => stat.date == today);
+		return todayStat
+	}
+
+
+
 
 	async clearAllStats() {
     
@@ -1169,20 +1319,7 @@ export default class WritingProgressPlugin extends Plugin {
 	
 	
 	
-	  async clearTodayStats() {
-		let dailyStats = this.settings.dailyStats;
-		let globalWordCount = this.settings.currentGlobalWordCount;
-		let today = window.moment().format("YYYY-MM-DD");
-		let todayStat = dailyStats.find((stat: any) => stat.date == today);
-		if (todayStat) {
-		  todayStat.startWordCount = globalWordCount
-		}
-
-		this.saveSettings()
-		this.updateAllViews()
-		
-		
-	  }
+	
 	
 	
 	
@@ -1196,6 +1333,21 @@ export default class WritingProgressPlugin extends Plugin {
 			setTimeout(() => {
 				this.updateProgressView()
 			}, 250);
+		}
+	  }
+
+
+
+
+	  async changeSessionGoal() {
+		let sessionGoal = this.settings.sessionGoal;
+		let num = await this.selectNumber(this.getLocalStrings().sessionGoal, sessionGoal);
+		if (num) {
+		  this.settings.sessionGoal = num;
+		  this.saveSettings();
+		  setTimeout(() => {
+			this.updateProgressView();
+		  }, 250);
 		}
 	  }
 
@@ -1648,6 +1800,55 @@ class SampleSettingTab extends PluginSettingTab {
 			})
 			.setTooltip(strings.reset)
 		})
+
+
+
+
+		new Setting(containerEl)
+		.setName(strings.todayStartingCount)
+		.addText((text) => {
+			text.inputEl.type = "number";
+	  
+			let currentSkip = 0
+			let todayStat = this.plugin.getDailyStat()
+			if (todayStat && todayStat.skip) {
+			  currentSkip = todayStat.skip
+			}
+	  
+			text.setValue(currentSkip + "");
+			text.onChange((value) => {
+			  if (todayStat) {
+				todayStat.skip = Number(value);
+			  }
+			  this.plugin.saveSettings();
+			  this.plugin.updateAllViews();
+			});
+		  }).addButton((btn) => {
+			btn.setIcon("clipboard-copy").onClick(() => {
+			  let todayStat = this.plugin.getDailyStat()
+			  if (todayStat) {
+				todayStat.skip = todayStat.endWordCount - todayStat.startWordCount;
+			  }
+			  this.plugin.saveSettings();
+			  this.display();
+			  this.plugin.updateAllViews();
+			}).setTooltip(strings.useCurrentWordcount);
+		  }).addButton((btn) => {
+			btn.setIcon("rotate-ccw").onClick(() => {
+				let todayStat = this.plugin.getDailyStat()
+			  if (todayStat) {
+				todayStat.skip = 0;
+			  }
+			  this.plugin.saveSettings();
+			  this.display();
+			  this.plugin.updateAllViews();
+			}).setTooltip(strings.reset);
+		  });
+
+
+
+
+
 
 
 		new Setting(containerEl)
