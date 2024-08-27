@@ -624,7 +624,7 @@ export class WritingStatisticView extends ItemView {
 		let lastDayEnd = weekData[weekData.length - 1].endWordCount
 
 
-
+		console.log(weekData)
 
 
 		weekData = weekData.map((stat: any) => {
@@ -893,6 +893,11 @@ export class WritingStatisticView extends ItemView {
 		d.writtenThisPeriod = d.writtenThisPeriod - skips 
 		return d
 		})
+
+
+
+
+		
 
 
 		let localStrings = this.plugin.getLocalStrings()
@@ -1416,17 +1421,17 @@ export default class WritingProgressPlugin extends Plugin {
 		let todayStat = dailyStats.find((stat:any) => stat.date == today)
 		if (!todayStat) {
 
-			if (dailyStats.length > 0) {
-				let lastStat = dailyStats[dailyStats.length - 1]
-				lastStat.endWordCount = globalWordCount
-			}
-
-
 			todayStat = {
 				date: today,
 				startWordCount: this.settings.startingCount,
 				endWordCount: globalWordCount
 			}
+
+			if (dailyStats.length > 0) {
+				let lastStat = dailyStats[dailyStats.length - 1]
+				lastStat.endWordCount = globalWordCount
+				todayStat.startWordCount = globalWordCount
+			} 
 
 			dailyStats.push(todayStat)
 			this.settings.dailyStats = dailyStats
