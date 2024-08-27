@@ -1015,9 +1015,9 @@ export class WritingStatisticView extends ItemView {
 		})
 
 		
-		let maxScale = goal + 7
+		let maxScale = goal + 100
 		if (lastDayEnd > goal) {
-			maxScale = lastDayEnd + 7
+			maxScale = lastDayEnd + 100 - this.plugin.settings.startingCount;
 		}
 
 		let goalMultiplier = (goal - firstDayStart) / (data.length - 1)
@@ -1037,8 +1037,8 @@ export class WritingStatisticView extends ItemView {
 				maintainAspectRatio: false,
 				scales: {
 					y: {
-					  min: firstDayStart - maxScale * 0.01,
-					  max: maxScale,
+						min: firstDayStart - this.plugin.settings.startingCount,
+						max: maxScale - this.plugin.settings.startingCount
 					}
 				}, 
 				elements: {
@@ -1052,11 +1052,11 @@ export class WritingStatisticView extends ItemView {
 				datasets: [
 					{
 						label: strings.writtenAll,
-						data: data.map((row:any) => row.writtenAll)
+						data: data.map((row) => row.writtenAll - this.plugin.settings.startingCount)
 					},
 					{
 						label: strings.goal,
-						data: goalData.map((row:any) => row)
+						data: goalData.map((row) => row - this.plugin.settings.startingCount)
 					}
 				]
 			}
