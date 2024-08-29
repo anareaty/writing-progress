@@ -1022,7 +1022,7 @@ export class WritingStatisticView extends ItemView {
 		
 		let maxScale = goal + 100
 		if (lastDayEnd > goal) {
-			maxScale = lastDayEnd + 100 - this.plugin.settings.startingCount;
+			maxScale = lastDayEnd + 100;
 		}
 
 		let goalMultiplier = (goal - firstDayStart) / (data.length - 1)
