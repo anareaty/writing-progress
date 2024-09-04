@@ -624,7 +624,7 @@ export class WritingStatisticView extends ItemView {
 		let lastDayEnd = weekData[weekData.length - 1].endWordCount
 
 
-		console.log(weekData)
+	
 
 
 		weekData = weekData.map((stat: any) => {
