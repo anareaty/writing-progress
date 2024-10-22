@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, MarkdownFileInfo, setIcon, setTooltip, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace, Vault, TAbstractFile, TFile, View, EventRef } from 'obsidian';
+import { App, Editor, MarkdownView, MarkdownFileInfo, setIcon, setTooltip, Modal, SuggestModal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf, Workspace, Vault, TAbstractFile, TFile, View, EventRef } from 'obsidian';
 import Chart from 'chart.js/auto';
 import { Moment } from 'moment';
 //import { setTimeout } from 'timers/promises';
@@ -186,6 +186,22 @@ const LocaleMap: any = {
 	todayStartingCount: {
 		en: "Today starting count",
 		ru: "Сегодняшнее стартовое количество слов"
+	}, 
+	currentMonth: {
+	  en: "current month",
+	  ru: "текущий месяц"
+	},
+	currentWeek: {
+	  en: "current week",
+	  ru: "текущая неделя"
+	},
+	currentWeekShort: {
+	  en: "current",
+	  ru: "текущая"
+	},
+	week: {
+	  en: "week",
+	  ru: "неделя"
 	}
 }
 
@@ -207,6 +223,8 @@ interface WritingProgressPluginSettings {
 	sessionOn: boolean;
   	sessionGoal: number;
   	sessionStart: number;
+	selectedMonth: string;
+  	selectedWeek: string;
 
 }
 
@@ -222,7 +240,9 @@ const DEFAULT_SETTINGS: WritingProgressPluginSettings = {
 	startingCount: 0,
 	sessionOn: false,
   	sessionGoal: 100,
-  	sessionStart: 0
+  	sessionStart: 0,
+	selectedMonth: "current",
+  	selectedWeek: "current"
 
 }
 
@@ -521,7 +541,39 @@ class NumberInputModal extends Modal {
 	  contentEl.empty();
 	  this.contentEl.removeEventListener("keydown", this.eventInput);
 	}
-  };
+};
+
+
+class MySuggestModal extends SuggestModal<string> {
+	plugin: WritingProgressPlugin
+	resolve: any
+	reject:any
+	values: string[] 
+	names?: string[]
+	constructor(app: App, plugin: WritingProgressPlugin, resolve: any, reject:any, values: string[], names?: string[]) {
+	  super(app);
+	  this.plugin = plugin;
+	  this.resolve = resolve
+	  this.reject = reject
+	  this.values = values
+	  this.names = names 
+	}
+	getSuggestions(query: string): string[] {
+		return this.values.filter((val) => {
+			return val.toLowerCase().includes(query.toLowerCase())
+		});
+	}
+	renderSuggestion(val: string, el: Element) {
+		let text = val
+		if (this.names) {
+			text = this.names[this.values.indexOf(val)]
+		} 
+		el.createEl("div", {text: text})	
+	}
+	onChooseSuggestion(val: string) {
+		this.resolve(val)
+	} 
+}
 
 
 
@@ -571,7 +623,12 @@ export class WritingStatisticView extends ItemView {
 
 		const container = this.containerEl.children[1];
 
-		let currentWeek = Number(window.moment().format("w"))
+		let selectedWeek = this.plugin.settings.selectedWeek
+		let currentWeek = window.moment().week();
+
+		if (selectedWeek != "current") {
+		currentWeek = window.moment(selectedWeek).week();
+		}
 
 		const dailyStats = this.plugin.settings.dailyStats
 		const dailyGoal = this.plugin.settings.dailyGoal
@@ -662,7 +719,31 @@ export class WritingStatisticView extends ItemView {
 
 		container.empty()
 		let contentWrapper = container.createEl("div", {cls: "weekly-statistic-view"});
-		contentWrapper.createEl("h1", { text: this.getDisplayText() });
+		
+		
+
+		let header = contentWrapper.createEl("h1", { text: this.getDisplayText() + ":" });
+
+		let weekButtonLine = ""
+		
+		if (this.plugin.settings.selectedWeek == "current") {
+		let currentWeekLine = window.moment().format("w")
+		//weekButtonLine = this.plugin.capitalizeFirst(currentWeekLine) + " (" + strings.currentWeekShort + ")"
+		weekButtonLine = this.plugin.capitalizeFirst(currentWeekLine) + "*"
+		} else {
+		let weekLine = window.moment(this.plugin.settings.selectedWeek).format("ww")
+		weekButtonLine = this.plugin.capitalizeFirst(weekLine)
+		}
+
+		let weekButton = header.createEl("button", { cls: "wp-select-button" });
+
+		weekButton.onclick = async () => {
+		await this.plugin.changeSelectedWeek()
+		}
+
+		weekButton.createEl("span", { text: weekButtonLine });
+		let selectIcon = weekButton.createEl("div", { cls: "wp-inline-icon" });
+		setIcon(selectIcon, "chevrons-up-down");
 
 
 		if (lastDayEnd - firstDayStart >= weeklyGoal) {
@@ -717,7 +798,13 @@ export class WritingStatisticView extends ItemView {
 
 		const container = this.containerEl.children[1];
 
-		let currentMonth = window.moment().month()
+		let selectedMonth = this.plugin.settings.selectedMonth
+		let currentMonth = window.moment().month();
+
+		if (selectedMonth != "current") {
+		currentMonth = window.moment(selectedMonth).month();
+		}
+
 		let daysInMonth = window.moment().daysInMonth()
 
 		const dailyStats = this.plugin.settings.dailyStats
@@ -812,7 +899,29 @@ export class WritingStatisticView extends ItemView {
 
 		container.empty()
 		let contentWrapper = container.createEl("div", {cls: "monthly-statistic-view"});
-		contentWrapper.createEl("h1", { text: this.getDisplayText() });
+		
+		let header = contentWrapper.createEl("h1", { text: this.getDisplayText() + ":" });
+
+		let monthButtonLine = ""
+		
+		if (this.plugin.settings.selectedMonth == "current") {
+		let currentMonthLine = window.moment().format("MMMM YYYY")
+		//monthButtonLine = currentMonthLine[0].toUpperCase() + currentMonthLine.slice(1) + " (" + strings.currentMonth + ")"
+		monthButtonLine = currentMonthLine[0].toUpperCase() + currentMonthLine.slice(1) + "*"
+		} else {
+		let monthLine = window.moment(this.plugin.settings.selectedMonth).format("MMMM YYYY")
+		monthButtonLine = monthLine[0].toUpperCase() + monthLine.slice(1)
+		}
+
+		let monthButton = header.createEl("button", { cls: "wp-select-button" });
+
+		monthButton.onclick = async () => {
+		await this.plugin.changeSelectedMonth()
+		}
+
+		monthButton.createEl("span", { text: monthButtonLine });
+		let selectIcon = monthButton.createEl("div", { cls: "wp-inline-icon" });
+		setIcon(selectIcon, "chevrons-up-down");
 
 
 		if (lastDayEnd - firstDayStart >= monthlyGoal) {
@@ -1396,6 +1505,91 @@ export default class WritingProgressPlugin extends Plugin {
 				this.updateMonthlyStats()
 			}, 250);
 		}
+	  }
+
+
+
+	async suggester(values: string[], names?: string[]) {
+		let data = new Promise((resolve, reject) => {
+			new MySuggestModal(this.app, this, resolve, reject, values, names).open()  
+		})
+		return data
+	}
+
+
+
+
+
+
+	  capitalizeFirst(string: string) {
+		return string[0].toUpperCase() + string.slice(1)
+	  }
+	
+	
+	
+	 
+	
+	  async changeSelectedMonth() {
+		
+	
+		let monthOptions = ["current"]
+		let monthOptionNames = [this.capitalizeFirst(this.getLocalStrings().currentMonth)]
+	
+		for (let i = 0; i < 12; i++) {
+		  let month = window.moment().subtract(i, "months").format("YYYY-MM-01")
+		  let monthName = window.moment().subtract(i, "months").format("MMMM YYYY")
+		  monthName = this.capitalizeFirst(monthName)
+		  monthOptions.push(month)
+		  monthOptionNames.push(monthName)
+		}
+	
+		let newSelectedMonth = await this.suggester(monthOptions, monthOptionNames) as string;
+		if (newSelectedMonth) {
+		  this.settings.selectedMonth = newSelectedMonth;
+		  this.saveSettings();
+		  setTimeout(() => {
+			this.updateMonthlyStats();
+		  }, 250);
+		}
+	
+	  }
+	
+	
+	
+	
+	
+	
+	  async changeSelectedWeek() {
+		
+	
+		let weekOptions = ["current"]
+		let weekOptionNames = [this.capitalizeFirst(this.getLocalStrings().currentWeek)]
+		let currentYear = window.moment().year()
+		let currentWeek = window.moment().week()
+		let currentWeekStart = window.moment().isoWeekYear(currentYear).isoWeek(currentWeek).startOf("week").format("YYYY-MM-DD")
+	
+		for (let i = 0; i < 12; i++) {
+	
+		  let weekStart = window.moment(currentWeekStart).subtract(i, "weeks")
+		  let weekStartString = weekStart.format("YYYY-MM-DD")
+		  let week = weekStart.format("ww")
+		  let monday = weekStart.format("LL")
+		  let sunday = weekStart.add(6, "days").format("LL")
+		  let weekName = week + " " + this.getLocalStrings().week + " (" + monday + " — " + sunday + ")"
+	
+		  weekOptions.push(weekStartString)
+		  weekOptionNames.push(weekName)
+		}
+	
+		let newSelectedWeek = await this.suggester(weekOptions, weekOptionNames) as string;
+		if (newSelectedWeek) {
+		  this.settings.selectedWeek = newSelectedWeek;
+		  this.saveSettings();
+		  setTimeout(() => {
+			this.updateWeeklyStats();
+		  }, 250);
+		}
+	
 	  }
 
 

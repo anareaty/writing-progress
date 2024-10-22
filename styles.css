@@ -92,7 +92,12 @@ If your plugin does not need CSS, delete this file.
 
 .monthly-statistic-view,
 .weekly-statistic-view {
-   padding: 16px 5% 32px 5%;
+   padding: 0px 5% 32px 5%;
+}
+
+.monthly-statistic-view h1,
+.weekly-statistic-view h1 {
+    margin-top: 0 !important;
 }
 
 
@@ -114,13 +119,6 @@ If your plugin does not need CSS, delete this file.
 }
 
 
-
-
-.mod-sidedock .monthly-statistic-view h1 + p,
-.mod-sidedock .weekly-statistic-view h1 + p {
-   margin-bottom: 0.3em !important;
-
-}
 
 .mod-sidedock .statistic-wrapper {
     font-size: var(--nav-item-size);
@@ -148,6 +146,11 @@ If your plugin does not need CSS, delete this file.
 .table-wrapper table {
     border-collapse: collapse;
     
+}
+
+
+.table-wrapper > p {
+    margin-top: 0 !important;
 }
 
 .table-wrapper th,
@@ -291,10 +294,30 @@ progress.value-100::-webkit-progress-value {
 
 
 
+button.wp-select-button {
+    display: inline-block;
+    border: none !important;
+    background-color: transparent !important;
+    font-size: inherit;
+    font-weight: inherit;
+    color: var(--text-muted);
+    cursor: pointer;
+    box-shadow: none !important;
+}
+
+.wp-select-button .wp-inline-icon {
+    margin-left: 4px;
+    color: var(--text-faint);
+}
+
+
+
 .wp-inline-icon {
     --icon-size: 1em;
     margin-right: 4px;
     color: var(--icon-color);
+    display: inline-block;
+    vertical-align: middle;
    
   }
 
