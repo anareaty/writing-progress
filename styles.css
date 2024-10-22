@@ -294,15 +294,9 @@ progress.value-100::-webkit-progress-value {
 
 
 
-button.wp-select-button {
-    display: inline-block;
-    border: none !important;
-    background-color: transparent !important;
-    font-size: inherit;
-    font-weight: inherit;
+span.wp-select-button {
     color: var(--text-muted);
     cursor: pointer;
-    box-shadow: none !important;
 }
 
 .wp-select-button .wp-inline-icon {

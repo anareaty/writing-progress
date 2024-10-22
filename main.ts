@@ -735,13 +735,13 @@ export class WritingStatisticView extends ItemView {
 		weekButtonLine = this.plugin.capitalizeFirst(weekLine)
 		}
 
-		let weekButton = header.createEl("button", { cls: "wp-select-button" });
+		let weekButton = header.createEl("span", { cls: "wp-select-button" });
 
 		weekButton.onclick = async () => {
 		await this.plugin.changeSelectedWeek()
 		}
 
-		weekButton.createEl("span", { text: weekButtonLine });
+		weekButton.createEl("span", { text: " " + weekButtonLine });
 		let selectIcon = weekButton.createEl("div", { cls: "wp-inline-icon" });
 		setIcon(selectIcon, "chevrons-up-down");
 
@@ -913,13 +913,13 @@ export class WritingStatisticView extends ItemView {
 		monthButtonLine = monthLine[0].toUpperCase() + monthLine.slice(1)
 		}
 
-		let monthButton = header.createEl("button", { cls: "wp-select-button" });
+		let monthButton = header.createEl("span", { cls: "wp-select-button" });
 
 		monthButton.onclick = async () => {
 		await this.plugin.changeSelectedMonth()
 		}
 
-		monthButton.createEl("span", { text: monthButtonLine });
+		monthButton.createEl("span", { text: " " + monthButtonLine });
 		let selectIcon = monthButton.createEl("div", { cls: "wp-inline-icon" });
 		setIcon(selectIcon, "chevrons-up-down");
 
